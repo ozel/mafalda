@@ -73,7 +73,7 @@ ifeq ($(ARCH),linuxx8664gcc)
 CXX           = g++ 
 CXXFLAGS      = -W -Wall -fPIC $(EXTRACXXFLAGS)
 LD            = g++
-LDFLAGS       = -O2
+LDFLAGS       = -O2 -lavro
 SOFLAGS       = -shared
 endif
 

@@ -12,7 +12,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <TMAth.h>
+#include <TMath.h>
 
 
 namespace MAFTools {

@@ -17,7 +17,7 @@
 
 
 #include <avro.h>
-#include <avro/codec.h>
+//#include <avro/codec.h>
 #include <assert.h>
 
 #define BUFF_LEN 1472 //508
@@ -332,11 +332,11 @@ void NetworkSender::Execute(){
 				yi[ycount] = pix.second;
 				//tot should be never zero
 				//we scale it here from 10bit (Timepix1) down to 8bit
-				//ei[ecount] = round((tot*256.0)/1024.0);
+				ei[ecount] = round((tot*256.0)/1024.0);
 				//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-				ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
+				//ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
 				if (!ei[ecount])
-					ei[ecount] = 4;
+					ei[ecount] = 1;  //4kev if calibrated
 			}
 
 
