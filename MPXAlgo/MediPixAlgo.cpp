@@ -800,7 +800,7 @@ TCanvas * MediPixAlgo::DrawInSeparateWindow(vector<TH1 *> g , MSG::Level vl){
 	double posy = 0.;
 	for ( ; itr != g.end(); itr++) {
 		c11->cd(cntr2+1);
-		//(*itr)->Draw();
+		(*itr)->Draw();
 		(*itr)->GetXaxis()->SetLabelSize(0.05);
 		(*itr)->GetYaxis()->SetLabelSize(0.05);
 
@@ -1205,7 +1205,7 @@ TCanvas * MediPixAlgo::DrawInSeparateWindow(vector<TH1 *> g, vector<TF1 *> f, TS
 
 		(*itr)->Draw("");
 		(*itr)->SetMarkerStyle(20);
-		//(*itr)->Draw("triw");
+		(*itr)->Draw("triw");
 		(*itr)->GetXaxis()->SetLabelSize(0.08);
 		(*itr)->GetYaxis()->SetLabelSize(0.08);
 
