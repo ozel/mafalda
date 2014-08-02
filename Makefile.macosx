@@ -1,0 +1,118 @@
+# Modified by John Idarraga, 2008
+# Medipix Group, Universite de Montreal	
+#
+# Makefile for the ROOT test programs.
+# This Makefile shows nicely how to compile and link applications
+# using the ROOT libraries on all supported platforms.
+#
+# Copyright (c) 2000 Rene Brun and Fons Rademakers
+#
+# Author: Fons Rademakers, 29/2/2000
+# -*- mode: makefile -*-
+#
+# Makefile containing platform dependencies for ROOT based projects.
+#
+# Copyright (c) 2000 Rene Brun and Fons Rademakers
+#
+# Author: Fons Rademakers, 29/2/2000
+
+shell         = /bin/bash
+ARCH         := $(shell root-config --arch)
+PLATFORM     := $(shell root-config --platform)
+
+#CXX           =
+ObjSuf        = o
+SrcSuf        = cpp
+HdrSuf        = h
+ExeSuf        =
+DllSuf        = so
+OutPutOpt     = -o # keep whitespace after "-o"
+
+ROOTCFLAGS   := $(shell root-config --cflags)
+ROOTLDFLAGS  := $(shell root-config --ldflags)
+ROOTLIBS     := $(shell root-config --libs)
+ROOTGLIBS    := $(shell root-config --glibs)
+HASTHREAD    := $(shell root-config --has-thread)
+
+
+ifeq ($(ARCH),macosx)
+# Linux with egcs, gcc 2.9x, gcc 3.x (>= RedHat 5.2)
+CXX           = g++ 
+CXXFLAGS      = -g3 -W -Wall -fPIC	
+LD            = g++
+LDFLAGS       = -O0
+SOFLAGS       = -dynamiclib
+endif
+
+ifeq ($(ARCH),macosx64)
+# Linux with egcs, gcc 2.9x, gcc 3.x (>= RedHat 5.2)
+CXX           = g++ 
+CXXFLAGS      = -g3 -W -Wall -m64
+LD            = g++
+LDFLAGS       = -O0
+SOFLAGS       = -dynamiclib
+endif
+
+ifeq ($(CXX),)
+$(error $(ARCH) invalid architecture)
+endif
+
+CXXFLAGS     += $(ROOTCFLAGS) -I./
+LDFLAGS      += $(ROOTLDFLAGS)
+LIBS          = $(ROOTLIBS) $(SYSLIBS)
+GLIBS         = $(ROOTGLIBS) $(SYSLIBS)
+
+EXPLLINKLIBS  = $(LIBS)
+EXPLLINKLIBS += $(GLIBS)
+
+#------------------------------------------------------------------------------
+WZANO := $(shell ./buildList.scripts "ANO" $(ObjSuf) $(SrcSuf))
+WZANO += MediPixAnalysisCoreDict.o
+
+DICTDEP := $(shell ./buildList.scripts "DICT" $(HdrSuf) $(HdrSuf))
+
+CINCDEP :=  $(shell ./buildList.scripts "CINCDEP" $(ObjSuf) $(SrcSuf))
+
+WZANSO       = libMediPixAnalysisCore.$(DllSuf)
+WZAN         = MediPixAnalysis$(ExeSuf)
+WZANLIB      = $(WZANSO)
+OBJS          = $(WZANO)
+PROGRAMS      = $(WZAN)
+#------------------------------------------------------------------------------
+
+.SUFFIXES: .$(SrcSuf) .$(ObjSuf) .$(DllSuf)
+
+all:            $(PROGRAMS)
+	@echo "*** MediPix Analysis Framework (UMontreal) ***"
+	@echo "                       John Idarraga, 2008"
+	@echo "                          idarraga@cern.ch"
+
+$(WZANSO):	$(WZANO)
+		@echo " ... linking ... "
+		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+		@echo "$@ done"
+
+$(WZAN):       $(WZANSO)
+#		$(LD) $(LDFLAGS)  $(WZANLIB) $(LIBS) \
+#		   $(OutPutOpt)$(WZAN)
+		@echo "$@ done"
+
+clean:
+		@rm -f $(OBJS) core *Dict.* *.so *.o
+
+distclean:      clean
+		@rm -f $(PROGRAMS) $(WZANSO) $(WZANLIB) *Dict.* *.def *.exp \
+		   *.root *.ps *.so *.lib *.dll *.d .def so_locations
+		@rm -rf cxx_repository
+		-@cd RootShower && $(MAKE) distclean
+
+.SUFFIXES: .$(SrcSuf)
+
+
+MediPixAnalysisCoreDict.$(SrcSuf): $(DICTDEP)
+	@echo "Generating dictionary $@ ..."
+	rootcint -f $@ -c $^
+
+.$(SrcSuf).$(ObjSuf):
+	echo $<
+	$(CXX) $(CXXFLAGS) $(CINCDEP) -c $< -o $@
