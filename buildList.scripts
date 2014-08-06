@@ -89,15 +89,15 @@ function AppendToLinkDef(){
 	    #find if it is a function
 	    findFunc=`echo $line | awk '{ print $1 }'`
 	    if [ $findFunc == "function" ]; then
-		# fetch the name of the function
-		line=`echo $line | awk '{ print $2 }'`
-		echo "#pragma link C++ function $line;" >> $linkDefFile
+		  # fetch the name of the function
+		  line=`echo $line | awk '{ print $2 }'`
+		  echo "#pragma link C++ function $line;" >> $linkDefFile
 	    else
-		# FrameStruct and FrameContainer are not needed anymore in the Dict
-		#  spare the user the trouble of realizing that
-		if [[ "$line" != "FrameStruct" && "$line" != "FrameContainer" ]] ; then 
-		    echo "#pragma link C++ class $line;" >> $linkDefFile
-		fi
+		  # FrameStruct and FrameContainer are not needed anymore in the Dict
+		  #  spare the user the trouble of realizing that
+		  if [[ "$line" != "FrameStruct" && "$line" != "FrameContainer" ]] ; then 
+		  	echo "#pragma link C++ class $line;" >> $linkDefFile
+		  fi
 	    fi
 	fi
     done < "$fileName"

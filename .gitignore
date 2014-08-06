@@ -2,3 +2,19 @@
 .cproject
 
 .project
+
+*.o
+
+Debug/AfterClusteringExample/subdir.mk
+
+Debug/sources.mk
+
+MediPixAnalysisCoreDict.h
+
+MediPixAnalysisCoreDict.cpp
+
+*.so
+
+*.dsc
+
+frame_

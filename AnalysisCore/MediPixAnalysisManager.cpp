@@ -8,22 +8,38 @@
 #define MediPixAnalysisManager_cpp
 
 #include "MediPixAnalysisManager.h"
+//#include "allpix_dm/allpix_dm.h"
 
-
-AnalysisManager::AnalysisManager(const Char_t * filename){
-
-	// Set the Log service
-	Log.setAlgoName("AnalysisManager");
+AnalysisManager::AnalysisManager(const Char_t * filename, bool  realtime_mode){
 
 	// Get the TTree
-	if(!InputFilesOK(filename)){
+	if(realtime_mode){
+		// Set the Log service
+		Log.setAlgoName("AnalysisManagerRT");
+
+		//create an empy tree, copied frm WriteToEntruple()
+		m_mpxTree = new TTree("MPXTree","Medi/TimePix data");
+
+		// fill fake file map
+		m_filesMap["realtime"] = (Int_t)m_mpxTree->GetEntries();
+		//FrameStruct * m_frame;
+		//m_frame = new FrameStruct("empty");
+		//m_mpxTree->Branch("FramesData", "FrameStruct", &m_frame, 128000, 2);
+
+		// Creation of the AnalysisCore Instance
+		//   done by the Manager, not by the user.
+		analysisCore = new MediPixAnalysisCore(m_mpxTree,1);
+	} else if(!InputFilesOK(filename)){
 		Log << MSG::FATAL << "found problems openning input file(s) ... leaving" << endreq;
 		exit(1);
+	} else{
+		// Set the Log service
+		Log.setAlgoName("AnalysisManager");
+		// Creation of the AnalysisCore Instance
+		//   done by the Manager, not by the user.
+		analysisCore = new MediPixAnalysisCore(m_mpxTree);
 	}
 
-	// Creation of the AnalysisCore Instance
-	//   done by the Manager, not by the user.
-	analysisCore = new MediPixAnalysisCore(m_mpxTree);
 	analysisCore->ListenToTheManager(this);
 	Log << MSG::INFO << "Creating MediPixAnalysisCore ("  << analysisCore << ")" << endreq;
 

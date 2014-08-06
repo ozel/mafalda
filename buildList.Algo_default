@@ -13,3 +13,6 @@ PPSResidual
 CalibrationLoader
 SimpleClustering
 TOTCalibrationPreparation
+MPXViewer
+MPXStoreGate
+MPXAlgo

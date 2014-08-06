@@ -44,8 +44,8 @@ public:
   void setHistoPalette(Int_t visMode);
   TString FindCurrentFile();
   Int_t FindCurrentFileId(TString);
-  Int_t GetTotalNumberOfFiles(){return (int)(GetInputFilesMap().size());};
-  Int_t GetNEntriesForFile(TString f){return GetInputFilesMap()[f];};
+  Int_t GetTotalNumberOfFiles(){return (int)(GetInputFilesMap().size());}; // FIXME REM
+  Int_t GetNEntriesForFile(TString f){return GetInputFilesMap()[f];};		// FIXME
 
   Bool_t SearchHotPixel();
   void SetFrameTitle(TString ti){m_viewerTitle = ti;};

@@ -7,8 +7,8 @@
 #ifndef ViewerControl_cpp
 #define ViewerControl_cpp
 
-#include "ViewerControl.h"
-#include "MPXViewer.h"
+#include "MPXViewer/ViewerControl.h"
+#include "MPXViewer/MPXViewer.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -51,6 +51,13 @@ MPXViewerControl::MPXViewerControl(TApplication * g_theApp_i, ViewerSteer * vSte
 
 	m_matrixSizeX = sizex;
 	m_matrixSizeY = sizey;
+
+	//trigger seekForward button to display new frames
+	//automatically in realtime mode
+	//TODO do this only if some option is set
+	TTimer *timer = new TTimer();
+	timer->Connect("Timeout()", "MPXViewerControl", this, "seekForward()");
+	timer->Start(100, kFALSE);
 
 }
 
@@ -790,6 +797,10 @@ void MPXViewerControl::seekForward( ){
 
 	g_theApp->Terminate();
 	vSteerControl->direction = SEEK_FORWARD;
+	//toggle realtime drawing of frames
+	//make seperate button maybe later
+	//vSteerControl->realtime_show = !vSteerControl->realtime_show;
+	Log << MSG::INFO << "seek pressed" << endreq;
 	//g_direction = 1;
 
 }

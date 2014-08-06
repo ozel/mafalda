@@ -27,6 +27,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <signal.h>
 
 #include "WriteToEntuple/MediPixWriteToEntuple.h"
 #include "AlgoTimer/MediPixAlgoTimer.h"
@@ -48,11 +49,13 @@ public:
 	inline AlgoSignalsHandler();
 	Long64_t nextFrame;
 	Int_t direction;
+	bool realtime_show;
 };
 
 AlgoSignalsHandler::AlgoSignalsHandler(){
 	nextFrame = 0;
 	direction = SEEK_FORWARD;
+	realtime_show = 1;
 }
 
 const Int_t kMaxm_primaryVertex = 19;
@@ -187,7 +190,7 @@ public :
       Check all these inline definitions.
 	 */
 
-	MediPixAnalysisCore(TTree *tree=0);
+	MediPixAnalysisCore(TTree *tree=0, bool realtime_mode=0);
 	virtual ~MediPixAnalysisCore();
 
 	//inline virtual Int_t    Cut(Long64_t entry);
@@ -195,10 +198,15 @@ public :
 	inline virtual Long64_t LoadTree(Long64_t entry);
 	inline virtual void     Init(TTree *tree);
 	virtual void            Loop();
+	virtual void 			LoopRT(bool realtime_run);
 	virtual void            Loop(Long64_t);
 	virtual void            Loop(Long64_t, Long64_t);
 	inline virtual Bool_t   Notify();
 	inline virtual void     Show(Long64_t entry = -1);
+
+	static void Handle_sigusr1(int sig);
+	//altered by Handle_sigusr1()
+	int realtime_run;
 
 	void InitMessage();
 	Bool_t ConnectAlgo(string, MediPixAlgo *);
@@ -218,7 +226,6 @@ private:
 	// Copy the frameXC map to a C-array.
 	// This fasten things up
 	void RemakePixelMap();
-
 
 	MediPixAlgoTimer * algoTimers;
 	std::map<string, MediPixAlgo *> m_algosMap;

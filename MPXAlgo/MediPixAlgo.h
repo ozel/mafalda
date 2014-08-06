@@ -28,6 +28,8 @@
 #include "MPXStoreGate/CandidateContainer.h"
 #include "MPXStoreGate/MPXStoreGate.h"
 #include "AnalysisCore/AnalysisCore_defs.h"
+//#include "MPXViewer/MPXViewer.h"
+#include "MPXViewer/ViewerControl.h"
 
 #include "ConfigurationValue.h"
 #include "OutputMng.h"
@@ -48,6 +50,8 @@ class MediPixAlgo {
 
   MediPixAlgo();
   virtual ~MediPixAlgo() { };
+
+  //MPXViewerControl * m_viewercontrol;
 
   OutputMng Log;
   void changeOutputLevel(MSG::Level newL){Log.OutputLevel = newL;};

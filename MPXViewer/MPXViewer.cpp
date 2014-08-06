@@ -26,7 +26,8 @@ MPXViewer::MPXViewer(){
 	MinHue = -1;
 	Lightness = -1;
 
-	setHistoPalette(VIS_MOD_JET);
+	setHistoPalette(VIS_MOD_HOT);
+	//setHistoPalette(VIS_MOD_JET);
 	//setHistoPalette(VIS_MOD_GRAY);
 
 	nHitsInPadCut = 1;
@@ -135,6 +136,9 @@ void MPXViewer::Init(){
 	int sizex = GetMatrixXdim();
 	int sizey = GetMatrixYdim();
 	pMenu = new MPXViewerControl(GetApplication(), vSteer, specialObjs_conf, sizex, sizey);
+	//m_viewercontrol = pMenu;
+
+
 
 }
 
@@ -205,10 +209,11 @@ void MPXViewer::Execute(){
 		/* sending info to the menu */
 		updateInfo->frameId = GetGlobalCounters();
 		updateInfo->frameIdLocal = GetFrameId();
-		updateInfo->currentFile = FindCurrentFile();
-		updateInfo->currentFileId = FindCurrentFileId(updateInfo->currentFile);
+		//REM exclude only when in reltime mode!!
+		//updateInfo->currentFile = FindCurrentFile();
+		//updateInfo->currentFileId = FindCurrentFileId(updateInfo->currentFile);
 		updateInfo->nEntries = GetNFrames(); // total !
-		updateInfo->nEntriesLocal = GetNEntriesForFile(updateInfo->currentFile); // per file
+		//updateInfo->nEntriesLocal = GetNEntriesForFile(updateInfo->currentFile); // per file
 		updateInfo->acqTime = GetAcqTime();
 		updateInfo->nHitsInPad = GetHitsInPad();
 		updateInfo->nChargeInPad = GetChargeInPad();
@@ -278,7 +283,7 @@ void MPXViewer::Execute(){
 				<< endreq;
 		Log << MSG::INFO << "Current file ["
 				<< updateInfo->currentFileId
-				<< "/" << GetTotalNumberOfFiles()
+				<< "/" /* << GetTotalNumberOfFiles()*/
 				<< "] \""
 				<< updateInfo->currentFile
 				<< "\" | Local Id : "
@@ -293,7 +298,17 @@ void MPXViewer::Execute(){
 		/* update properties */
 		feedBackInfo_New = pMenu->ControlUpdate(updateInfo, feedBackInfo_Old);
 
+
 		GetApplication()->Run(kTRUE);
+
+//		//realtime mode
+//		if(1){
+//				//advance to next frame automatically
+//				//pMenu->seekForward();
+//				//g_theApp->Terminate();
+//				GetApplication()->Terminate();
+//				//vSteerControl->direction = SEEK_FORWARD;
+//		}
 
 		/* if properties changed, update ! */
 		if(feedBackInfo_Old != feedBackInfo_New){
@@ -363,6 +378,7 @@ void MPXViewer::Execute(){
 
 	if(h_frame)
 		delete h_frame;
+
 }
 
 /**  
@@ -568,8 +584,12 @@ void MPXViewer::histoProperties(TH2I * h1, TCanvas * c){
 		feedBackInfo_Old->maxHisto = (Int_t)h1->GetMaximum();
 		feedBackInfo_Old->minHisto = (Int_t)h1->GetMinimum();
 
-		if(feedBackInfo_Old->minHisto == feedBackInfo_Old->maxHisto){
-			feedBackInfo_Old->minHisto--;
+//		if(feedBackInfo_Old->minHisto == feedBackInfo_Old->maxHisto){
+//			feedBackInfo_Old->minHisto--;
+//		}
+
+		if(feedBackInfo_Old->minHisto == 0 &&  feedBackInfo_Old->maxHisto == 0){
+			feedBackInfo_Old->maxHisto = 1;
 		}
 
 	}
@@ -598,7 +618,10 @@ void MPXViewer::histoProperties(TH2I * h1, TCanvas * c){
 
 	// Background of the graph
 	//c->SetFrameFillColor(palette[0]);
-	c->SetFillColor(kWhite);
+	//c->SetFillColor(kWhite);
+	c->SetFillColor(kGray); //canvas background sourrounding histo
+	gStyle->SetFrameFillColor(kGray); //histo background
+
 
 	c->SetBorderMode(0);
 

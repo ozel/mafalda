@@ -39,7 +39,7 @@ class AnalysisManager {
 public:
 
 	AnalysisManager(){};
-	AnalysisManager(const Char_t *);
+	AnalysisManager(const Char_t *, bool realtime_mode=0);
 	~AnalysisManager();
 	OutputMng Log;
 	MSG::Endreq endreq;
@@ -248,6 +248,8 @@ public:
 	//void SetCalibEnergy(Int_t xy, Double_t e);
 	//Int_t GetCalibEnergy(Int_t col, Int_t row);
 	//Int_t GetCalibEnergy(Int_t xy);
+
+
 
 private:
 
