@@ -52,13 +52,16 @@ MPXViewerControl::MPXViewerControl(TApplication * g_theApp_i, ViewerSteer * vSte
 	m_matrixSizeX = sizex;
 	m_matrixSizeY = sizey;
 
+	//prepare realtime view mode
 	//trigger seekForward button to display new frames
-	//automatically in realtime mode
-	//TODO do this only if some option is set
 	TTimer *timer = new TTimer();
 	timer->Connect("Timeout()", "MPXViewerControl", this, "seekForward()");
-	timer->Start(100, kFALSE);
-
+	m_timerRTmode = timer;
+	timer->Start(900, kFALSE);
+	//TODO is teree a better way than start/stop in the beginning?
+	//this way well wait for at least one frame to display after program start
+	timer->TurnOff();
+	m_RTview = false;
 }
 
 MPXViewerControl::~MPXViewerControl(){
@@ -262,7 +265,7 @@ void MPXViewerControl::Build(){
 	contentsSteering->AddFrame(contentsSteeringFB, new TGLayoutHints(kLHintsTop | kLHintsExpandX, 0, 0, 0, 0));
 
 	/* seek back button */
-	fButtonSeekBack = new TGTextButton(contentsSteeringFB, "        <<       ", 450);
+	fButtonSeekBack = new TGTextButton(contentsSteeringFB,    "        <<        ", 450);
 	fButtonSeekBack->Connect("Clicked()", "MPXViewerControl", this, "seekBack()");
 	fButtonSeekBack->SetToolTipText("seek back");
 	contentsSteeringFB->AddFrame(fButtonSeekBack, new TGLayoutHints(kLHintsCenterX, 10, 2, 2, 2));
@@ -271,6 +274,13 @@ void MPXViewerControl::Build(){
 	fButtonSeekForward->Connect("Clicked()", "MPXViewerControl", this, "seekForward()");
 	fButtonSeekForward->SetToolTipText("seek forward (next interesting frame)");
 	contentsSteeringFB->AddFrame(fButtonSeekForward, new TGLayoutHints(kLHintsCenterX, 2, 10, 2, 2));
+
+	/* toggle realtime mode button */
+	fButtonToggleRTview = new TGTextButton(contentsSteeringFB,    "      RT view     ", 550);
+	fButtonToggleRTview->Connect("Clicked()", "MPXViewerControl", this, "toggleRTview()");
+	fButtonToggleRTview->SetToolTipText("toggle realtime view");
+	contentsSteeringFB->AddFrame(fButtonToggleRTview, new TGLayoutHints(kLHintsCenterX, 10, 18, 2, 2));
+
 
 	// Separator
 	//TGHorizontal3DLine * separator2 = new TGHorizontal3DLine(contentsMeta);
@@ -800,8 +810,23 @@ void MPXViewerControl::seekForward( ){
 	//toggle realtime drawing of frames
 	//make seperate button maybe later
 	//vSteerControl->realtime_show = !vSteerControl->realtime_show;
-	Log << MSG::INFO << "seek pressed" << endreq;
+	//Log << MSG::INFO << "seek pressed" << endreq;
 	//g_direction = 1;
+
+}
+
+void MPXViewerControl::toggleRTview( ){
+
+	Log << MSG::INFO << "toggleRTview pressed" << endreq;
+	m_RTview = ! m_RTview;
+	if(!m_RTview){
+		fButtonToggleRTview->ChangeText("    RT view off   ");
+		m_timerRTmode->Stop();
+	} else {
+		fButtonToggleRTview->ChangeText("    RT view on    ");
+		m_timerRTmode->TurnOn();
+		m_timerRTmode->Reset();
+	}
 
 }
 

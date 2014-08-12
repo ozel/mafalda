@@ -207,6 +207,7 @@ RQ_OBJECT("MPXViewerControl")
    TGTextButton      * fButtonSetHisto1;
    TGTextButton      * fButtonSeekBack;
    TGTextButton      * fButtonSeekForward;
+   TGTextButton      * fButtonToggleRTview;
 
    TGTextButton      * fSaveConfiguration;
 
@@ -245,6 +246,7 @@ RQ_OBJECT("MPXViewerControl")
    ViewerSteer * vSteerControl;
    int m_matrixSizeX;
    int m_matrixSizeY;
+   TTimer * m_timerRTmode;
 
  public:
   MPXViewerControl(TApplication *, ViewerSteer *, std::vector<CandidateContainer *> *, int, int);
@@ -257,6 +259,7 @@ RQ_OBJECT("MPXViewerControl")
   /* slots for GUI events */
   void PrintEventStats();
   void seekForward();
+  void toggleRTview();
   void seekBack();
   void ShowResults();
   void jump100F();
@@ -293,6 +296,8 @@ RQ_OBJECT("MPXViewerControl")
   void SaveConfiguration();
   
   TString CreateStartTimeString(Double_t);
+
+  bool m_RTview;
 
   ClassDef(MPXViewerControl,0)
 };
