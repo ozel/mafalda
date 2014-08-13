@@ -102,7 +102,6 @@ typedef struct {
 typedef struct {
   Int_t direction;
   Int_t oldDirection;
-  bool realtime_show;
 } ViewerSteer ;
 
 typedef enum {

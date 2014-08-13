@@ -25,6 +25,7 @@
 #include "MPXStoreGate/MPXStoreGate.h"
 #include "MPXStoreGate/CandidateContainer.h"
 
+
 using namespace std;
 
 /**
@@ -249,7 +250,11 @@ public:
 	//Int_t GetCalibEnergy(Int_t col, Int_t row);
 	//Int_t GetCalibEnergy(Int_t xy);
 
-
+	//stores RT mode state, enabled via 'AnalysisManager mpxAnalysis("fifo_file", RT_MODE);'
+	//1: read frames in pixelman's ASCII/SPARESEXY format in realtime from FIFO input file
+	//0: default mode, read frames form root file
+	bool m_RTmode;
+	const char * m_RTfifo;
 
 private:
 

@@ -16,8 +16,13 @@
 #include "WriteToEntuple/MediPixWriteToEntuple.h"
 #include "MPXAlgo/MediPixAlgo.h"
 
+// this controls the endless loop in LoopRT()
+// if SIGUSR1 is send to the root process,
+// the loop ends and the run finishes properly
+static Bool_t s_RTstate = 0;
+
 void MediPixAnalysisCore::Handle_sigusr1(int sig){
-	//realtime_run = !realtime_run;
+	s_RTstate = !s_RTstate;
 }
 
 MediPixAnalysisCore::MediPixAnalysisCore(TTree *tree, bool realtime_mode)
@@ -26,9 +31,6 @@ MediPixAnalysisCore::MediPixAnalysisCore(TTree *tree, bool realtime_mode)
 	// Set the Log service
 	Log.setAlgoName("MediPixAnalysisCore");
 	Log.OutputLevel = MSG::INFO;
-
-	//add signal to stop run loop
-	realtime_run = 0;
 
 	signal(SIGUSR1, MediPixAnalysisCore::Handle_sigusr1);
 
@@ -91,11 +93,7 @@ void MediPixAnalysisCore::Loop(Long64_t oneFrame_i)
 	m_initFrame = oneFrame_i;
 	m_lastFrame = oneFrame_i;
 
-	if(oneFrame_i == -1){
-		MediPixAnalysisCore::LoopRT(1);
-	} else {
-		MediPixAnalysisCore::Loop();
-	}
+	MediPixAnalysisCore::Loop();
 
 }
 
@@ -324,7 +322,9 @@ void MediPixAnalysisCore::LoopRT(bool realtime_run)
 	//ifs.open("frame_");
 
 	//for (Long64_t jentry = m_initFrame ; jentry <= m_lastFrame ; )
-	while(realtime_run)
+	s_RTstate = realtime_run;
+	//while loop control variable can be changed by SIGUSR1 singal
+	while(s_RTstate)
 	{
 
 		//Long64_t ientry = LoadTree(jentry);
@@ -339,7 +339,7 @@ void MediPixAnalysisCore::LoopRT(bool realtime_run)
 		//read pixelman data in ASCII, 32Bit unsigend, SPARESEXY
 		//frameType == (FSAVE_ASCII | FSAVE_U32 | FSAVE_SPARSEXY)
 
-		ifs.open("frame_");
+		ifs.open(theManager->m_RTfifo);
 
 
 		Int_t fillTime = 0;
@@ -419,14 +419,6 @@ void MediPixAnalysisCore::LoopRT(bool realtime_run)
 		//  like taking care of the StoreGate
 		//Int_t nObjs = 0;
 		theManager->GetStoreGate()->CleanUpAllStoreGateExcept(MPXDefs::CONF);
-
-		if(algoSignals.realtime_show == 1 /* && m_algosMap["MPXViewer"]->m_viewercontrol != NULL*/){
-			//draw new frame hitsogramms immediatelly
-			Log << MSG::INFO << "Show new RT frame" << endreq;
-			g_theApp->Terminate();
-			//simulate press of seek button
-			//m_algosMap["MPXViewer"]->m_viewercontrol->seekForward();
-		}
 
 		// if (Cut(ientry) < 0) continue;
 		if ( (algoSignals.direction == SEEK_FORWARD && algoSignals.nextFrame == DONT_JUMP) ) {

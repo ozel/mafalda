@@ -52,4 +52,6 @@ namespace MSG  {
 
 #define MAX_OCCUPANCY_CONF_LINE 1024
 
+#define RT_MODE true
+
 #endif

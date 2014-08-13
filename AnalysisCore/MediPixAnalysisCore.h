@@ -49,13 +49,11 @@ public:
 	inline AlgoSignalsHandler();
 	Long64_t nextFrame;
 	Int_t direction;
-	bool realtime_show;
 };
 
 AlgoSignalsHandler::AlgoSignalsHandler(){
 	nextFrame = 0;
 	direction = SEEK_FORWARD;
-	realtime_show = 1;
 }
 
 const Int_t kMaxm_primaryVertex = 19;
@@ -198,15 +196,13 @@ public :
 	inline virtual Long64_t LoadTree(Long64_t entry);
 	inline virtual void     Init(TTree *tree);
 	virtual void            Loop();
-	virtual void 			LoopRT(bool realtime_run);
+	virtual void 			LoopRT(bool realtime_run = 1);
 	virtual void            Loop(Long64_t);
 	virtual void            Loop(Long64_t, Long64_t);
 	inline virtual Bool_t   Notify();
 	inline virtual void     Show(Long64_t entry = -1);
 
 	static void Handle_sigusr1(int sig);
-	//altered by Handle_sigusr1()
-	int realtime_run;
 
 	void InitMessage();
 	Bool_t ConnectAlgo(string, MediPixAlgo *);

@@ -14,6 +14,7 @@ AnalysisManager::AnalysisManager(const Char_t * filename, bool  realtime_mode){
 
 	// Get the TTree
 	if(realtime_mode){
+		m_RTmode = true;
 		// Set the Log service
 		Log.setAlgoName("AnalysisManagerRT");
 
@@ -21,18 +22,22 @@ AnalysisManager::AnalysisManager(const Char_t * filename, bool  realtime_mode){
 		m_mpxTree = new TTree("MPXTree","Medi/TimePix data");
 
 		// fill fake file map
-		m_filesMap["realtime"] = (Int_t)m_mpxTree->GetEntries();
+		m_filesMap[filename] = (Int_t)m_mpxTree->GetEntries();
+		m_RTfifo = filename;
+
+		//fChain->Add(filename);
 		//FrameStruct * m_frame;
 		//m_frame = new FrameStruct("empty");
 		//m_mpxTree->Branch("FramesData", "FrameStruct", &m_frame, 128000, 2);
 
 		// Creation of the AnalysisCore Instance
 		//   done by the Manager, not by the user.
-		analysisCore = new MediPixAnalysisCore(m_mpxTree,1);
+		analysisCore = new MediPixAnalysisCore(m_mpxTree,RT_MODE);
 	} else if(!InputFilesOK(filename)){
 		Log << MSG::FATAL << "found problems openning input file(s) ... leaving" << endreq;
 		exit(1);
 	} else{
+		m_RTmode = false;
 		// Set the Log service
 		Log.setAlgoName("AnalysisManager");
 		// Creation of the AnalysisCore Instance
@@ -272,8 +277,12 @@ Bool_t AnalysisManager::DisconnectAlgo(TString algoName){
 
 
 void AnalysisManager::Run(){
-	// all
-	analysisCore->Loop(0, analysisCore->fChain->GetEntries()-1);
+	if(m_RTmode){
+		analysisCore->LoopRT();
+	} else {
+		//all frames
+		analysisCore->Loop(0, analysisCore->fChain->GetEntries()-1);
+	}
 }
 
 void AnalysisManager::Run(Int_t initFrame){

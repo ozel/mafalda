@@ -19,7 +19,8 @@ void runRT(){
 	//return;
 
 	// Get an instance of the analysis manager and load data
-	AnalysisManager mpxAnalysis("",1);
+	// second parameter enables RT mode, filename must then point to a FIFO file
+	AnalysisManager mpxAnalysis("frame_", kTRUE);
 
 	// Blobs Finder.  This is a Clustering Algorithm
 	// BlobsFinder * bf = new BlobsFinder;
@@ -66,9 +67,8 @@ void runRT(){
 	//mpxAnalysis.SetOutputNtupleFilename("outputfile.root");
 
 	// Run !
-	mpxAnalysis.Run(-1);       // RT mode
-	//mpxAnalysis.Run(0, 100); // range of frames
-	//mpxAnalysis.Run(1);      // ony one frame
+	// if RT mode is on, don't do frame selection
+	mpxAnalysis.Run();       // RT mode
 
 }
 

@@ -809,7 +809,6 @@ void MPXViewerControl::seekForward( ){
 	vSteerControl->direction = SEEK_FORWARD;
 	//toggle realtime drawing of frames
 	//make seperate button maybe later
-	//vSteerControl->realtime_show = !vSteerControl->realtime_show;
 	//Log << MSG::INFO << "seek pressed" << endreq;
 	//g_direction = 1;
 
