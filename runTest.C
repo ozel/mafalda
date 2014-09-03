@@ -64,7 +64,7 @@ void runTest(){
 
 	// If you want to setup an output filename yourself
 	//  otherwise MAFalda builds something convenient
-	//mpxAnalysis.SetOutputNtupleFilename("outputfile.root");
+	mpxAnalysis.SetOutputNtupleFilename("outputfile.root");
 
 	// Run !
 	mpxAnalysis.Run();         // all frames

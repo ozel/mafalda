@@ -45,5 +45,6 @@
 #pragma link C++ class Test;
 #pragma link C++ class SimpleClusterContainer;
 #pragma link C++ class TestClusterFilter;
+#pragma link C++ class NetworkSender;
 
 #endif

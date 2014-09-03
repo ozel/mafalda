@@ -95,7 +95,7 @@ function AppendToLinkDef(){
 	    else
 		  # FrameStruct and FrameContainer are not needed anymore in the Dict
 		  #  spare the user the trouble of realizing that
-		  if [[ "$line" != "FrameStruct" && "$line" != "FrameContainer" ]] ; then 
+		  if [[ "$line" != "FrameStruct" && "$line" != "FrameContainer" && "$line" != "avro" ]] ; then 
 		  	echo "#pragma link C++ class $line;" >> $linkDefFile
 		  fi
 	    fi

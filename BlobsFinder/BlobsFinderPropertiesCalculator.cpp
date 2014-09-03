@@ -670,6 +670,8 @@ void BlobsFinder::FillClusterDescription(){
 
 		oneBlob.clusterDescription.push_back( pair< pair<Int_t, Int_t>, Int_t > ( (*i).first, GetMatrixElement( (*i).first) ) );
 		//Log << MSG::ALWAYS << "+ " << GetToA( (*i).first ) << endreq;
+
+		// maybe uncomment or exclude if ToA is not available to improve speed:
 		oneBlob.clusterDescriptionToA.push_back( pair< pair<Int_t, Int_t>, Int_t > ( (*i).first, GetToA( (*i).first ) ) );
 		oneBlob.clusterDescriptionFastToA.push_back( pair< pair<Int_t, Int_t>, Int_t > ( (*i).first, GetFastToA( (*i).first ) ) );
 

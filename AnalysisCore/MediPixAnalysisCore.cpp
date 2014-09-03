@@ -298,12 +298,17 @@ void MediPixAnalysisCore::LoopRT(bool realtime_run)
 	fFrameId=0;
 
 	//some presets, for now hard coded
+	//TODO: get frame size from .dsc file
 	m_isMCData = 0;
 	fHeight=256;
 	fWidth=256;
 
 	//the raw hit matrix of one frame
 	m_frameXC_Fast = new int[fWidth*fHeight];
+
+	//these are not used yet but need to be present for other algos
+	m_frameXToA_Fast = new int[fWidth*fHeight];
+	m_frameXFastToA_Fast = new int[fWidth*fHeight];
 
 	for ( algScheduleItr=m_algosSchedule.begin() ; algScheduleItr != m_algosSchedule.end(); algScheduleItr++ )
 	{

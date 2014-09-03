@@ -89,9 +89,9 @@ endif
 ifeq ($(ARCH),macosx64)
 # Linux with egcs, gcc 2.9x, gcc 3.x (>= RedHat 5.2)
 CXX           = g++ 
-CXXFLAGS      = -g3 -W -Wall -m64 -pipe -W -Woverloaded-virtual
+CXXFLAGS      = -g3 -W -Wall -m64 -pipe -W -Woverloaded-virtual -I/usr/local/include/
 LD            = g++
-LDFLAGS       = -O0
+LDFLAGS       = -O0 -lavro
 #LDFLAGS       = -v -O2 -mmacosx-version-min=10.9 -lGui -lCore -lCint -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lTree -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lpthread -lm -ldl 
 SOFLAGS       = -dynamiclib -single_module
 endif
@@ -161,7 +161,7 @@ distclean:      clean
 
 MediPixAnalysisCoreDict.$(SrcSuf): $(DICTDEP)
 	@echo "Generating dictionary $@ ..."
-	$(ROOTCINT) -f $@ -c $^
+	$(ROOTCINT) -f $@ -c -p $^ 
 #	rootcint -f $@ -c $^
 
 MediPixAnalysisCoreDict.$(SrcSuf).o:	
