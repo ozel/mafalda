@@ -56,28 +56,32 @@ void NetworkSender::init_schema(void)
 		                exit(EXIT_FAILURE);
 		}
 
-		fp = fopen("cluster_schema.json", "r");
-		rval = fread(jsontext, 1, sizeof(jsontext) - 1, fp);
-		jsontext[rval] = '\0';
-
-		if(avro_schema_from_json_length(jsontext, rval, &cluster_schema)){
-		      fprintf(stderr, "Unable to parse Cluster schema");
-		                exit(EXIT_FAILURE);
-		}
+//		fp = fopen("cluster_schema.json", "r");
+//		rval = fread(jsontext, 1, sizeof(jsontext) - 1, fp);
+//		jsontext[rval] = '\0';
+//
+//		if(avro_schema_from_json_length(jsontext, rval, &cluster_schema)){
+//		      fprintf(stderr, "Unable to parse Cluster schema");
+//		                exit(EXIT_FAILURE);
+//		}
 
 		tpx_frame = avro_record(tpx_schema);
 
 
 		cluster_array_schema = avro_schema_get_subschema(tpx_schema, "clusterArray");
 
-		//avro_schema_t cluster_schema = avro_schema_get_subschema(cluster_array_schema, "Cluster"); //doesn't work, why?
-
 		cluster_schema = avro_schema_record("Cluster", NULL);
 		avro_schema_record_field_append(cluster_schema, "id", avro_schema_int());
 		avro_schema_record_field_append(cluster_schema, "energy", avro_schema_float());
-		avro_schema_record_field_append(cluster_schema, "width", avro_schema_int());
-		avro_schema_record_field_append(cluster_schema, "height", avro_schema_int());
-		avro_schema_record_field_append(cluster_schema, "hits", avro_schema_bytes());
+		avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
+		avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
+		avro_schema_record_field_append(cluster_schema, "ei", avro_schema_bytes());
+
+		tpx_frame = avro_record(tpx_schema);
+
+		//avro_schema_t cluster_schema = avro_schema_get_subschema(cluster_array_schema, "Cluster"); //doesn't work, why?
+
+
 
 		fprintf(stderr,"%d %d %d \n", tpx_frame, cluster_array_schema, cluster_schema);
 
@@ -111,12 +115,14 @@ void NetworkSender::add_cluster(avro_writer_t db)
 //        avro_record_set(avro_cluster, "height", id_datum);
 //        avro_record_set(avro_cluster, "hits", bytes_datum);
 
-        if ( avro_array_append_datum(avro_cluster_array, avro_cluster) )
-             {
-                fprintf(stderr, "Unable to create cluster_array datum structure\n");
-//                exit(EXIT_FAILURE);
-        }
+		fprintf(stderr, "avro cluster size %i", avro_size_data(a_db, tpx_schema,avro_cluster));
 
+		//if(avro_writer_tell(a_db) +  < BUF_LEN ){
+			if ( avro_array_append_datum(avro_cluster_array, avro_cluster) ) {
+                	fprintf(stderr, "Unable to create cluster_array datum structure\n");
+                	//                exit(EXIT_FAILURE);
+				}
+		//}
 
 
 
@@ -143,6 +149,11 @@ NetworkSender::NetworkSender() : MediPixAlgo(), CalibrationLoader(this) {
 
 }
 
+void NetworkSender::SetHostname(const char * hostname){
+	m_hostname = hostname;
+}
+
+
 void NetworkSender::Init(){
 
 	Log << MSG::INFO << "Init function !" << endreq;
@@ -161,10 +172,10 @@ void NetworkSender::Init(){
 	a_db = avro_writer_memory(buffer, BUFF_LEN);
 	init_schema();
 	Log << MSG::INFO <<  "Creating TUDPSocket" << endreq;
-	fSocket = new TUDPSocket("ozelipad", 8123);
+	fSocket = new TUDPSocket(m_hostname, 8123);
 
 	if (!fSocket || !fSocket->IsValid()) {
-		Log << MSG::ERROR << "cannot connect to host" << endreq;
+		Log << MSG::ERROR << "cannot connect to host:" << m_hostname << endreq;
 
 	}
 
@@ -189,9 +200,8 @@ void NetworkSender::Execute(){
 	Log << MSG::INFO << "Number of blobs from clustering = " << (Int_t) blobsVector.size() << endreq;
 	vector<blob>::iterator blobsItr = blobsVector.begin(); //allBlobs.begin();
 
-	tpx_frame = avro_record(tpx_schema);
+
 	avro_cluster_array = avro_array(cluster_array_schema);
-	avro_cluster = avro_record(cluster_schema);
 
 
 
@@ -215,15 +225,18 @@ void NetworkSender::Execute(){
 		// Store the cluster TOT for output
 		m_clusterTOT.push_back( cl.bP.clusterTOT );
 
+		avro_cluster = avro_record(cluster_schema);
+
+
 		avro_record_set(avro_cluster, "id", avro_int32(id));
-		avro_record_set(avro_cluster, "width", avro_int32(id));
-		avro_record_set(avro_cluster, "height", avro_int32(id));
 
 		double calib_edep = 0.0, clusterEdep = 0.;
 		int tot = 0;
 		pair<int, int> pix;
 
-		char * bytes = new char[cl.bP.nPixels]();
+		char * xi = new char[cl.bP.nPixels]();
+		char * yi = new char[cl.bP.nPixels]();
+		char * ei = new char[cl.bP.nPixels]();
 		int count =0;
 		float totalTOT = 0.0;
 		for ( ; i != cl_des.end() ; i++) {
@@ -231,7 +244,9 @@ void NetworkSender::Execute(){
 			// pixel coordinates and tot
 			pix = (*i).first;
 			tot = (*i).second;
-			bytes[count]=(*i).second;
+			xi[count]=pix.first;
+			yi[count]=pix.second;
+			ei[count]=(*i).second;
 
 			// Use calibration to obtain E = Surrogate(TOT) for this pixel
 			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
@@ -239,11 +254,18 @@ void NetworkSender::Execute(){
 
 			// Calculate the energy of the cluster
 			clusterEdep += calib_edep;
+//			if (count==0){
+				Log << MSG::DEBUG << "pixel_x:" << pix.first << " pixel_y: " << pix.second << " tot:" << tot <<  endreq;
+//			}
 			count++;
 
 		}
 		Log << MSG::INFO << "clusterSize " << cl.bP.nPixels << endreq;
-		avro_record_set(avro_cluster, "hits", avro_bytes(bytes, cl.bP.nPixels));
+		Log << MSG::INFO << "totalTOT " << totalTOT << endreq;
+
+		avro_record_set(avro_cluster, "xi", avro_bytes(xi, cl.bP.nPixels));
+		avro_record_set(avro_cluster, "yi", avro_bytes(yi, cl.bP.nPixels));
+		avro_record_set(avro_cluster, "ei", avro_bytes(ei, cl.bP.nPixels));
 
 		// Store the cluster Energy calculated in the previous loop
 		m_clusterEnergy.push_back( clusterEdep );
@@ -267,8 +289,11 @@ void NetworkSender::Execute(){
 
       if (avro_write_data(a_db, tpx_schema, tpx_frame)) {
               fprintf(stderr,
-                      "Unable to write tpx_frame of %d bytes to memory buffer\nMessage: %s\n", avro_writer_tell(a_db), avro_strerror());
-              avro_writer_reset(a_db);
+                      "Unable to write tpx_frame %d of %d bytes to memory buffer\nMessage: %s\n", avro_writer_tell(a_db), avro_strerror());
+
+//              	  avro_array_(avro_cluster_array, avro_cluster);
+
+//              avro_writer_reset(a_db);
 //              exit(EXIT_FAILURE);
       }
 
@@ -284,9 +309,9 @@ void NetworkSender::Execute(){
     }
 
     avro_writer_reset(a_db);
-    avro_datum_decref(avro_cluster_array);
-    avro_datum_decref(avro_cluster);
-    avro_datum_decref(tpx_frame);
+//    avro_datum_decref(avro_cluster_array);
+//   avro_datum_decref(avro_cluster);
+//    avro_datum_decref(tpx_frame);
 
 	// WARNING ! don't forget to clean up your variables for the next TTree::Fill call
 	m_clusterEnergy.clear();

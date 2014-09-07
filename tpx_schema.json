@@ -8,11 +8,11 @@
        					"name": "Cluster",
        					"type": "record",
        					"fields" : [
-               				{"name": "id", "type": "int"},
-               				{"name": "energy", "type": "float"},
-               				{"name": "width", "type": "int"},
-               				{"name": "height", "type": "int"},
-               				{"name": "hits", "type": "bytes"}
+                        {"name": "id", "type": "int"},
+                        {"name": "energy", "type": "float"},
+                        {"name": "xi", "type": "bytes"},
+                        {"name": "yi", "type": "bytes"},
+                        {"name": "ei", "type": "bytes"}
               			]
 				}
        		}

@@ -18,3 +18,5 @@ MediPixAnalysisCoreDict.cpp
 *.dsc
 
 frame_
+
+*.root

@@ -8,13 +8,13 @@
  *  $ root -l runNetworkSender.C
  */
 
-void runNetworkSender(){
+void runNetworkSenderFile(const char * hostname = "localhost"){
 
 	// Load the MediPix analysis lib
 	gSystem->Load("libMediPixAnalysisCore.so");
 
 	// Get an instance of the analysis manager and load data
-	AnalysisManager mpxAnalysis("frame_",kTRUE);
+	AnalysisManager mpxAnalysis("/Users/ozel/Documents/thesis/processing/measurements/inair/MPXNtuple_test_TPX2.root");
 
 	// Blobs Finder.  This is a Clustering Algorithm
 	BlobsFinder * bf = new BlobsFinder;
@@ -27,6 +27,7 @@ void runNetworkSender(){
 	// Your algorithm --> NetworkSender
 	NetworkSender * ac = new NetworkSender;
 	ac->changeOutputLevel(MSG::DEBUG);
+	ac->SetHostname(hostname);
 	mpxAnalysis.ConnectAlgo("NetworkSender", ac);
 	// Setting up the calibration from this algorithm by loading
 	//  the 4 calibration files and the clock used for calibration. 
@@ -38,7 +39,6 @@ void runNetworkSender(){
 	//ac->SetCalibrationConfigFile_t("/__set_your_own_path__/calib_t.txt");
 	//ac->SetCalibClk(9.6); // MHz
 	//ac->ReadConfiguration();
-	//ac->OutputLevel(MSG::DEBUG);
 
 	// This is an special algorithm that works as a frames viewer
 	MPXViewer * v1 = new MPXViewer;

@@ -44,13 +44,13 @@ void runTest(){
 	//  the 4 calibration files and the clock used for calibration. 
 	//  If you fail loading any of the 5 following pieces then the 
 	//  calibration won't be available but you can still run the job.
-	ac->SetCalibrationConfigFile_a("../calib/3kev/_Calib_a.txt");
-	ac->SetCalibrationConfigFile_b("../calib/3kev/_Calib_b.txt");
-	ac->SetCalibrationConfigFile_c("../calib/3kev/_Calib_c.txt");
-	ac->SetCalibrationConfigFile_t("../calib/3kev/_Calib_t.txt");
-	ac->SetCalibClk(10); // MHz
-	ac->ReadConfiguration();
-	ac->OutputLevel(MSG::INFO);
+//	ac->SetCalibrationConfigFile_a("../calib/3kev/_Calib_a.txt");
+//	ac->SetCalibrationConfigFile_b("../calib/3kev/_Calib_b.txt");
+//	ac->SetCalibrationConfigFile_c("../calib/3kev/_Calib_c.txt");
+//	ac->SetCalibrationConfigFile_t("../calib/3kev/_Calib_t.txt");
+//	ac->SetCalibClk(10); // MHz
+//	ac->ReadConfiguration();
+//	ac->OutputLevel(MSG::INFO);
 
 	// This is an special algorithm that works as a frames viewer
 	MPXViewer * v1 = new MPXViewer;

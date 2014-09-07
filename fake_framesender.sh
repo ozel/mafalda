@@ -1,6 +1,7 @@
 #!/bin/bash
 while true
 do 
-	cat test.data | nc -u -w 0 ozelipad 8123
-	sleep 1
+	nc -u -w 0 $1 8123 < test.data
+	echo "new frame:" | tee /dev/stderr | nc -u -w 0 $1 8123
+	sleep 2.1
 done

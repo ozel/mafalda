@@ -35,11 +35,13 @@ public:
   void Finalize();
   void init_schema();
   void add_cluster(avro_writer_t db);
+  void SetHostname(const char * hostname);
 
 private:
 
   AllBlobsContainer * m_aB;
   Int_t m_minNPixels;
+  const char * m_hostname;
 
   // for output
   vector<int> m_clusterTOT;
