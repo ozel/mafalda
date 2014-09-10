@@ -19,7 +19,7 @@ void runNetworkSenderFile(const char * hostname = "localhost"){
 	// Blobs Finder.  This is a Clustering Algorithm
 	BlobsFinder * bf = new BlobsFinder;
 	mpxAnalysis.ConnectAlgo("BlobsFinder", bf);
-	bf->changeOutputLevel(MSG::INFO);
+	bf->changeOutputLevel(MSG::DEBUG);
 	bf->SetBorderExclusion(1);
 	bf->SetDiscontinuityTolerance(0);
 	//bf->ReadConfiguration();

@@ -1,1 +1,6 @@
-SimpleClustering maxOcc 0.5 double
+BlobsFinder Chi2OverDof_rot 2 double
+BlobsFinder maxOccupancy 0.5 double
+BlobsFinder border 1 int
+BlobsFinder discontinuity 0 int
+BlobsFinder lvl1cut -1 int
+NetworkSender minNPixels 1 int

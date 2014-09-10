@@ -8,7 +8,7 @@
  *  $ root -l runNetworkSender.C
  */
 
-void runNetworkSender(){
+void runNetworkSender(const char * hostname = "localhost"){
 
 	// Load the MediPix analysis lib
 	gSystem->Load("libMediPixAnalysisCore.so");
@@ -28,6 +28,7 @@ void runNetworkSender(){
 	NetworkSender * ac = new NetworkSender;
 	ac->changeOutputLevel(MSG::DEBUG);
 	mpxAnalysis.ConnectAlgo("NetworkSender", ac);
+	ac->SetHostname(hostname);
 	// Setting up the calibration from this algorithm by loading
 	//  the 4 calibration files and the clock used for calibration. 
 	//  If you fail loading any of the 5 following pieces then the 

@@ -17,14 +17,20 @@
 
 
 #include <avro.h>
+#include <avro/codec.h>
 #include <assert.h>
 
-#define BUFF_LEN 510
+#define BUFF_LEN 1472 //508
 avro_schema_t tpx_schema, cluster_schema, cluster_array_schema;
 avro_datum_t tpx_frame, avro_cluster, avro_cluster_array;
 avro_writer_t a_db;
 char * buffer;
 TUDPSocket * fSocket;
+
+unsigned char * xi;
+unsigned char * yi;
+unsigned char * ei;
+
 
 /* A simple schema for our tutorial */
 const char  TPX_SCHEMA[] =
@@ -38,6 +44,55 @@ const char  TPX_SCHEMA[] =
 		               {\"name\": \"energy\", \"type\": \"float\"},\
 		                {\"name\": \"hits\", \"type\": \"integer\"}\
 		              ]}}}";
+
+//Do not call me.
+long getUTF8size(const wchar_t *string){
+    if (!string)
+        return 0;
+    long res=0;
+    for (;*string;string++){
+        if (*string<0x80)
+            res++;
+        else if (*string<0x800)
+            res+=2;
+        else
+            res+=3;
+    }
+    return res;
+}
+
+/*
+ string: a wchar_t C string (nul terminated)
+ Return value: a UTF-8-encoded C string.
+
+ The function handles memory allocation on its own.
+
+ Limitations: Only handles the range [U+0000;U+FFFF], higher code points are
+ changed to '?'.
+
+ Assumptions: sizeof(wchar_t)>=2
+ */
+char *WChar_to_UTF8(const wchar_t *string){
+    long fSize=getUTF8size(string);
+    char *res=new char[fSize+1];
+    res[fSize]=0;
+    if (!string)
+        return res;
+    long b=0;
+    for (;*string;string++,b++){
+        if (*string<0x80)
+            res[b]=(char)*string;
+        else if (*string<0x800){
+            res[b++]=(*string>>6)|192;
+            res[b]=*string&63|128;
+        }else{
+            res[b++]=(*string>>12)|224;
+            res[b++]=((*string&4095)>>6)|128;
+            res[b]=*string&63|128;
+        }
+    }
+    return res;
+}
 
 /* Parse schema into a schema data structure */
 void NetworkSender::init_schema(void)
@@ -70,14 +125,7 @@ void NetworkSender::init_schema(void)
 
 		cluster_array_schema = avro_schema_get_subschema(tpx_schema, "clusterArray");
 
-		cluster_schema = avro_schema_record("Cluster", NULL);
-		avro_schema_record_field_append(cluster_schema, "id", avro_schema_int());
-		avro_schema_record_field_append(cluster_schema, "energy", avro_schema_float());
-		avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
-		avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
-		avro_schema_record_field_append(cluster_schema, "ei", avro_schema_bytes());
 
-		tpx_frame = avro_record(tpx_schema);
 
 		//avro_schema_t cluster_schema = avro_schema_get_subschema(cluster_array_schema, "Cluster"); //doesn't work, why?
 
@@ -115,7 +163,7 @@ void NetworkSender::add_cluster(avro_writer_t db)
 //        avro_record_set(avro_cluster, "height", id_datum);
 //        avro_record_set(avro_cluster, "hits", bytes_datum);
 
-		fprintf(stderr, "avro cluster size %i", avro_size_data(a_db, tpx_schema,avro_cluster));
+		fprintf(stderr, "avro cluster size %i\n", avro_size_data(a_db, tpx_schema,avro_cluster));
 
 		//if(avro_writer_tell(a_db) +  < BUF_LEN ){
 			if ( avro_array_append_datum(avro_cluster_array, avro_cluster) ) {
@@ -179,7 +227,11 @@ void NetworkSender::Init(){
 
 	}
 
-	   fSocket->SetOption(kNoBlock, 1);
+	fSocket->SetOption(kNoBlock, 1);
+
+	xi = new unsigned char[256]();
+	yi = new unsigned char[256]();
+	ei = new unsigned char[256]();
 
 }
 
@@ -200,6 +252,15 @@ void NetworkSender::Execute(){
 	Log << MSG::INFO << "Number of blobs from clustering = " << (Int_t) blobsVector.size() << endreq;
 	vector<blob>::iterator blobsItr = blobsVector.begin(); //allBlobs.begin();
 
+	cluster_schema = avro_schema_record("Cluster", NULL);
+	avro_schema_record_field_append(cluster_schema, "id", avro_schema_int());
+	avro_schema_record_field_append(cluster_schema, "energy", avro_schema_float());
+	avro_schema_record_field_append(cluster_schema, "center_x", avro_schema_float());
+	avro_schema_record_field_append(cluster_schema, "center_y", avro_schema_float());
+	avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
+	avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
+	avro_schema_record_field_append(cluster_schema, "ei", avro_schema_bytes());
+	tpx_frame = avro_record(tpx_schema);
 
 	avro_cluster_array = avro_array(cluster_array_schema);
 
@@ -234,45 +295,81 @@ void NetworkSender::Execute(){
 		int tot = 0;
 		pair<int, int> pix;
 
-		char * xi = new char[cl.bP.nPixels]();
-		char * yi = new char[cl.bP.nPixels]();
-		char * ei = new char[cl.bP.nPixels]();
-		int count =0;
-		float totalTOT = 0.0;
+
+//		xi[cl.bP.nPixels] = '\0';
+		int xcount =0;
+		int ycount =0;
+		int ecount =0;
 		for ( ; i != cl_des.end() ; i++) {
 
 			// pixel coordinates and tot
 			pix = (*i).first;
 			tot = (*i).second;
-			xi[count]=pix.first;
-			yi[count]=pix.second;
-			ei[count]=(*i).second;
+
+			// we need to escape the zero value because Avro bytes are parsed as UTF8 string in the receiver
+			// we use modified UTF8 here: 0 -> 0xC0, 0x80
+//			if(pix.first == 0){
+//				xi[xcount++] = 0xC0;
+//				xi[xcount]   = 0x80;
+//
+//			} else {
+//				xi[xcount]=pix.first;
+//			}
+//			if(pix.second == 0){
+//				yi[ycount++] = 0xC0;
+//				yi[ycount]   = 0x80;
+//			} else{
+//				yi[ycount]=pix.second;
+//			}
+
+			if(pix.first && pix.second){
+				xi[xcount] = pix.first;
+				yi[ycount] = pix.second;
+				//tot should be never zero
+				//we scale it here from 10bit (Timepix1) down to 8bit
+				ei[ecount] = round((tot*256.0)/1024.0);
+				if (!ei[ecount])
+					ei[ecount] = 1;
+			}
 
 			// Use calibration to obtain E = Surrogate(TOT) for this pixel
 			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
-			totalTOT += (float)tot;
 
 			// Calculate the energy of the cluster
 			clusterEdep += calib_edep;
 //			if (count==0){
 				Log << MSG::DEBUG << "pixel_x:" << pix.first << " pixel_y: " << pix.second << " tot:" << tot <<  endreq;
+//				Log << MSG::DEBUG << "pixel_x:" << xi[xcount] << " pixel_y: " << yi[ycount] << " tot:" << ei[ecount] <<  endreq;
 //			}
-			count++;
+			xcount++;
+			ycount++;
+			ecount++;
 
 		}
 		Log << MSG::INFO << "clusterSize " << cl.bP.nPixels << endreq;
-		Log << MSG::INFO << "totalTOT " << totalTOT << endreq;
+		Log << MSG::INFO << "clusterTOT " << cl.bP.clusterTOT  << endreq;
 
-		avro_record_set(avro_cluster, "xi", avro_bytes(xi, cl.bP.nPixels));
-		avro_record_set(avro_cluster, "yi", avro_bytes(yi, cl.bP.nPixels));
-		avro_record_set(avro_cluster, "ei", avro_bytes(ei, cl.bP.nPixels));
+
+
+		avro_record_set(avro_cluster, "xi", avro_bytes((char *)xi, xcount));
+		avro_record_set(avro_cluster, "yi", avro_bytes((char *)yi, ycount));
+		avro_record_set(avro_cluster, "ei", avro_bytes((char *)ei, ecount));
 
 		// Store the cluster Energy calculated in the previous loop
 		m_clusterEnergy.push_back( clusterEdep );
-		avro_record_set(avro_cluster, "energy", avro_float(totalTOT));
+		avro_record_set(avro_cluster, "energy", avro_float(cl.bP.clusterTOT));
 
+		avro_record_set(avro_cluster, "center_x", avro_float(cl.bP.geoCenter_x));
+		avro_record_set(avro_cluster, "center_y", avro_float(cl.bP.geoCenter_y));
 
 		add_cluster(a_db);
+
+	    for(int i=0; i < 256; i++) {
+			  xi[i]=0;
+			  yi[i]=0;
+			  ei[i]=0;
+	    }
+
 
 		id++;
 
@@ -286,6 +383,28 @@ void NetworkSender::Execute(){
                           exit(EXIT_FAILURE);
          }
 
+
+//    avro_codec_t codec = (avro_codec_t) avro_new(struct avro_codec_t_);
+//
+//    codec->block_size=BUFF_LEN;
+//
+//
+//    if (!codec) {
+//    	fprintf(stderr,"Unable to allocate new codec\n");
+//    	}
+//    int rval = avro_codec(codec, "deflate");
+//    if (rval) {
+//    	fprintf(stderr,"Unable to write register deflate codec\nMessage: %s\n", avro_strerror());
+//    	avro_codec_reset(codec);
+//
+//    }
+//    if(avro_codec_encode(codec,buffer, BUFF_LEN)){
+//    	 fprintf(stderr,
+//    	                      "Unable to encode with codec\nMessage: %s\n", avro_strerror());
+//
+//    }
+//
+//    Log << MSG::DEBUG << "byte after deflate:" << codec->used_size << endreq;
 
       if (avro_write_data(a_db, tpx_schema, tpx_frame)) {
               fprintf(stderr,
@@ -309,13 +428,16 @@ void NetworkSender::Execute(){
     }
 
     avro_writer_reset(a_db);
-//    avro_datum_decref(avro_cluster_array);
-//   avro_datum_decref(avro_cluster);
+    //avro_codec_reset(codec);
+   avro_datum_decref(avro_cluster_array);
+   avro_datum_decref(avro_cluster);
 //    avro_datum_decref(tpx_frame);
 
 	// WARNING ! don't forget to clean up your variables for the next TTree::Fill call
-	m_clusterEnergy.clear();
-	m_clusterTOT.clear();
+
+
+   m_clusterEnergy.clear();
+   m_clusterTOT.clear();
 
 }
 
