@@ -163,7 +163,7 @@ void NetworkSender::add_cluster(avro_writer_t db)
 //        avro_record_set(avro_cluster, "height", id_datum);
 //        avro_record_set(avro_cluster, "hits", bytes_datum);
 
-		fprintf(stderr, "avro cluster size %i\n", avro_size_data(a_db, tpx_schema,avro_cluster));
+//		fprintf(stderr, "avro cluster size %i\n", avro_size_data(a_db, tpx_schema,avro_cluster));
 
 		//if(avro_writer_tell(a_db) +  < BUF_LEN ){
 			if ( avro_array_append_datum(avro_cluster_array, avro_cluster) ) {
@@ -227,6 +227,8 @@ void NetworkSender::Init(){
 
 	}
 
+	fSocket->SetOption(kKeepAlive, 1);
+	fSocket->SetOption(kNoDelay, 1);
 	fSocket->SetOption(kNoBlock, 1);
 
 	xi = new unsigned char[256]();
@@ -249,7 +251,7 @@ void NetworkSender::Execute(){
 
 	// AllBlobsContainer is a box full of Blobs(Clusters). Now we can iterate over all clusters inside.
 	vector<blob> blobsVector = m_aB->GetBlobsVector();
-	Log << MSG::INFO << "Number of blobs from clustering = " << (Int_t) blobsVector.size() << endreq;
+	Log << MSG::DEBUG << "Number of blobs from clustering = " << (Int_t) blobsVector.size() << endreq;
 	vector<blob>::iterator blobsItr = blobsVector.begin(); //allBlobs.begin();
 
 	cluster_schema = avro_schema_record("Cluster", NULL);
@@ -417,13 +419,13 @@ void NetworkSender::Execute(){
       }
 
     int db_size = avro_writer_tell(a_db);
-    printf("final data len = %ld\n", db_size);
+//    printf("final data len = %ld\n", db_size);
 
     TString msg = "80	80	80\n81	80	80\n82	80	80\n83	80	80\n84	80	80\n85	80	80\n";
 
-    Log << MSG::INFO  << "new frame:" << a_db << endreq;
+//    Log << MSG::DEBUG  << "new frame:" << a_db << endreq;
 
-    if (fSocket->SendRaw(buffer, db_size) == -1) {
+    if (fSocket->SendRaw(buffer, db_size, kDontBlock) == -1) {
     	Log << MSG::ERROR << "error sending command to host" << endreq;
     }
 

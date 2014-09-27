@@ -358,7 +358,7 @@ void MediPixAnalysisCore::LoopRT(bool realtime_run)
 
 			// See if the end of file has been reached
 			if ( ifs.eof() ) {
-				Log << MSG::INFO << "EOF seen" << endreq;
+				Log << MSG::DEBUG << "EOF seen" << endreq;
 				break;
 			}
 

@@ -26,7 +26,7 @@ void runNetworkSender(const char * hostname = "localhost"){
 
 	// Your algorithm --> NetworkSender
 	NetworkSender * ac = new NetworkSender;
-	ac->changeOutputLevel(MSG::DEBUG);
+	ac->changeOutputLevel(MSG::INFO);
 	mpxAnalysis.ConnectAlgo("NetworkSender", ac);
 	ac->SetHostname(hostname);
 	// Setting up the calibration from this algorithm by loading
