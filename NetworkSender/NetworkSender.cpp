@@ -286,7 +286,7 @@ void NetworkSender::Execute(){
 		list< pair < pair<int, int>, int > >::iterator i = cl_des.begin();
 
 		// Store the cluster TOT for output
-		m_clusterTOT.push_back( cl.bP.clusterTOT );
+		//m_clusterTOT.push_back( cl.bP.clusterTOT );
 
 		avro_cluster = avro_record(cluster_schema);
 
@@ -324,23 +324,27 @@ void NetworkSender::Execute(){
 //				yi[ycount]=pix.second;
 //			}
 
+			// Use calibration to obtain E = Surrogate(TOT) for this pixel
+			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
+
 			if(pix.first && pix.second){
 				xi[xcount] = pix.first;
 				yi[ycount] = pix.second;
 				//tot should be never zero
 				//we scale it here from 10bit (Timepix1) down to 8bit
-				ei[ecount] = round((tot*256.0)/1024.0);
+				//ei[ecount] = round((tot*256.0)/1024.0);
+				//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+				ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
 				if (!ei[ecount])
-					ei[ecount] = 1;
+					ei[ecount] = 4;
 			}
 
-			// Use calibration to obtain E = Surrogate(TOT) for this pixel
-			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
+
 
 			// Calculate the energy of the cluster
 			clusterEdep += calib_edep;
 //			if (count==0){
-				Log << MSG::DEBUG << "pixel_x:" << pix.first << " pixel_y: " << pix.second << " tot:" << tot <<  endreq;
+				Log << MSG::DEBUG << "x:" << pix.first << " y: " << pix.second << " tot:" << tot <<  " e:" << calib_edep << "keV" << endreq;
 //				Log << MSG::DEBUG << "pixel_x:" << xi[xcount] << " pixel_y: " << yi[ycount] << " tot:" << ei[ecount] <<  endreq;
 //			}
 			xcount++;
@@ -350,6 +354,8 @@ void NetworkSender::Execute(){
 		}
 		Log << MSG::INFO << "clusterSize " << cl.bP.nPixels << endreq;
 		Log << MSG::INFO << "clusterTOT " << cl.bP.clusterTOT  << endreq;
+		Log << MSG::INFO << "cluster energy " << clusterEdep  << endreq;
+
 
 
 
@@ -358,8 +364,8 @@ void NetworkSender::Execute(){
 		avro_record_set(avro_cluster, "ei", avro_bytes((char *)ei, ecount));
 
 		// Store the cluster Energy calculated in the previous loop
-		m_clusterEnergy.push_back( clusterEdep );
-		avro_record_set(avro_cluster, "energy", avro_float(cl.bP.clusterTOT));
+		//m_clusterEnergy.push_back( clusterEdep );
+		avro_record_set(avro_cluster, "energy", avro_float((float)clusterEdep));//cl.bP.clusterTOT));
 
 		avro_record_set(avro_cluster, "center_x", avro_float(cl.bP.geoCenter_x));
 		avro_record_set(avro_cluster, "center_y", avro_float(cl.bP.geoCenter_y));
