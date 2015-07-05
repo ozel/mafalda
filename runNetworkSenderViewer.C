@@ -1,7 +1,4 @@
-#include "AnalysisCore/MediPixAnalysisManager.h"
-//#include "AnalysisCore/MediPixAnalysisCoreLinkDef.h"
-#include "BlobsFinder/BlobsFinder.h"
-#include "NetworkSender/NetworkSender.h"
+
 /**
  * Created automatically with MAFalda (Di 26 Aug 2014 18:10:33 CEST)
  * MAFalda Author:  John Idarraga <idarraga@cern.ch>
@@ -11,7 +8,7 @@
  *  $ root -l runNetworkSender.C
  */
 
-void runNetworkSender(const char * hostname = "ozelipad.local"){
+void runNetworkSender(const char * hostname = "ozelipad"){
 
 	// Load the MediPix analysis lib
 	gSystem->Load("libMediPixAnalysisCore.so");
@@ -23,9 +20,9 @@ void runNetworkSender(const char * hostname = "ozelipad.local"){
 	BlobsFinder * bf = new BlobsFinder;
 	mpxAnalysis.ConnectAlgo("BlobsFinder", bf);
 	bf->changeOutputLevel(MSG::INFO);
-	//bf->SetBorderExclusion(1);
-	//bf->SetDiscontinuityTolerance(0);
-	bf->ReadConfiguration();
+	bf->SetBorderExclusion(1);
+	bf->SetDiscontinuityTolerance(0);
+	//bf->ReadConfiguration();
 
 	// Your algorithm --> NetworkSender
 	NetworkSender * ac = new NetworkSender;
@@ -42,14 +39,14 @@ void runNetworkSender(const char * hostname = "ozelipad.local"){
 	ac->SetCalibrationConfigFile_t("../calib/t.txt");
 	ac->SetCalibClk(10); // MHz
 	ac->ReadConfiguration();
-	ac->OutputLevel(MSG::INFO);
+	ac->OutputLevel(MSG::DEBUG);
 
 	// This is an special algorithm that works as a frames viewer
-	//MPXViewer * v1 = new MPXViewer;
-	//v1->changeOutputLevel(MSG::DEBUG);
-	//mpxAnalysis.ConnectAlgo("MPXViewer", v1);
+	MPXViewer * v1 = new MPXViewer;
+	v1->changeOutputLevel(MSG::DEBUG);
+	mpxAnalysis.ConnectAlgo("MPXViewer", v1);
 	//v1->SetCuts(10,10); // A minimum cut to skip uninteresting frames
-	//v1->SetFrameTitle("Offline Analysis");
+	v1->SetFrameTitle("Offline Analysis");
 
 	// Get a list of the algorithms connected
 	mpxAnalysis.DumpAlgoList();
