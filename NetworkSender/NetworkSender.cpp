@@ -279,11 +279,21 @@ void NetworkSender::Execute(){
 		//  so you can reprocess and check results online.
 		if(cl.bP.nPixels < m_minNPixels)
 			continue;
-		
+
 		// If the cluster passes the minimum requirements loop over the
 		// the constituents of the cluster --> ClusterDescription
 		list< pair < pair<int, int>, int > > cl_des = cl.GetClusterDescription();
 		list< pair < pair<int, int>, int > >::iterator i = cl_des.begin();
+
+                double calib_edep = 0.0, clusterEdep = 0.;
+                int tot = 0;
+                pair<int, int> pix;
+
+                calib_edep = CalculateAndGetCalibEnergy((*i).first, (*i).second);
+                if(calib_edep < 4.0 && cl.bP.nPixels == 1){
+                  continue; //skip noisy pixels
+		}
+
 
 		// Store the cluster TOT for output
 		//m_clusterTOT.push_back( cl.bP.clusterTOT );
@@ -293,9 +303,6 @@ void NetworkSender::Execute(){
 
 		avro_record_set(avro_cluster, "id", avro_int32(id));
 
-		double calib_edep = 0.0, clusterEdep = 0.;
-		int tot = 0;
-		pair<int, int> pix;
 
 
 //		xi[cl.bP.nPixels] = '\0';
@@ -332,11 +339,13 @@ void NetworkSender::Execute(){
 				yi[ycount] = pix.second;
 				//tot should be never zero
 				//we scale it here from 10bit (Timepix1) down to 8bit
-				ei[ecount] = round((tot*256.0)/1024.0);
+		                // no! 11810 bit is maxium count
+				if (tot > 1500) tot = 1500; //limit at ~1.5 MeV
+				ei[ecount] = round((tot*256.0)/1500);
 				//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 				//ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
 				if (!ei[ecount])
-					ei[ecount] = 1;  //4kev if calibrated
+					ei[ecount] = 1;  //~4kev if calibrated
 			}
 
 
@@ -372,19 +381,19 @@ void NetworkSender::Execute(){
 
 		add_cluster(a_db);
 
-	    for(int i=0; i < 256; i++) {
+	    	for(int i=0; i < 256; i++) {
 			  xi[i]=0;
 			  yi[i]=0;
 			  ei[i]=0;
-	    }
+	    	}
 
-
+		if(avro_writer_tell(a_db) > (BUFF_LEN-10)) break;
 		id++;
 
 	}
 
 	// Fill the output tree of this algorithm
-	getMyTree()->Fill();
+	//getMyTree()->Fill();
 
     if ( avro_record_set(tpx_frame, "clusterArray", avro_cluster_array))                 {
                          fprintf(stderr, "Unable to create Clusters datum structure\n");
@@ -415,23 +424,27 @@ void NetworkSender::Execute(){
 //    Log << MSG::DEBUG << "byte after deflate:" << codec->used_size << endreq;
 
       if (avro_write_data(a_db, tpx_schema, tpx_frame)) {
-              fprintf(stderr,
-                      "Unable to write tpx_frame %d of %d bytes to memory buffer\nMessage: %s\n", avro_writer_tell(a_db), avro_strerror());
+              fprintf(stderr,"Unable to write tpx_frame %i of %i bytes to memory buffer\nMessage: %s\n", id, avro_writer_tell(a_db), avro_strerror());
 
 //              	  avro_array_(avro_cluster_array, avro_cluster);
 
-//              avro_writer_reset(a_db);
-//              exit(EXIT_FAILURE);
+              	//avro_writer_reset(a_db);
+		//avro_datum_decref(avro_cluster_array);
+   		//avro_datum_decref(avro_cluster);
+		//m_clusterEnergy.clear();
+		//m_clusterTOT.clear();
+		// exit(EXIT_FAILURE);
       }
 
     int db_size = avro_writer_tell(a_db);
-//    printf("final data len = %ld\n", db_size);
+    printf("final data len = %d\n", db_size);
 
     TString msg = "80	80	80\n81	80	80\n82	80	80\n83	80	80\n84	80	80\n85	80	80\n";
 
 //    Log << MSG::DEBUG  << "new frame:" << a_db << endreq;
 
-    if (fSocket->SendRaw(buffer, db_size, kDontBlock) == -1) {
+    
+    if (!db_size || fSocket->SendRaw(buffer, db_size, kDontBlock) == -1) {
     	Log << MSG::ERROR << "error sending command to host" << endreq;
     }
 
