@@ -1,4 +1,3 @@
-
 /**
  * Created automatically with MAFalda (Di 26 Aug 2014 18:10:33 CEST)
  * MAFalda Author:  John Idarraga <idarraga@cern.ch>
@@ -15,35 +14,25 @@
 #include "TUDPSocket.h"
 
 
-
+#include <string.h> 
 #include <avro.h>
+#include <TString.h>
 //#include <avro/codec.h>
 #include <assert.h>
 
 #define BUFF_LEN 1472 //508
-avro_schema_t tpx_schema, cluster_schema, cluster_array_schema;
-avro_datum_t tpx_frame, avro_cluster, avro_cluster_array;
+avro_schema_t tpx_schema, cluster_schema, cluster_array_schema, energy_array_schema;
+avro_datum_t tpx_frame, avro_cluster, avro_cluster_array, avro_energy_array;
 avro_writer_t a_db;
 char * buffer;
 TUDPSocket * fSocket;
+TUDPSocket * fSocket2;
+TUDPSocket * fSocket3;
 
 unsigned char * xi;
 unsigned char * yi;
 unsigned char * ei;
 
-
-/* A simple schema for our tutorial */
-const char  TPX_SCHEMA[] =
-		"{\"name\":\"Clusters\",\
-		  \"type\":{\
-		  \"type\": \"array\",\
-		  \"items\":{\
-		     \"name\": \"Cluster\",\
-		       \"type\": \"record\",\
-		       \"fields\" : [\
-		               {\"name\": \"energy\", \"type\": \"float\"},\
-		                {\"name\": \"hits\", \"type\": \"integer\"}\
-		              ]}}}";
 
 //Do not call me.
 long getUTF8size(const wchar_t *string){
@@ -97,12 +86,16 @@ char *WChar_to_UTF8(const wchar_t *string){
 /* Parse schema into a schema data structure */
 void NetworkSender::init_schema(void)
 {
-		avro_schema_error_t schema_error;
-		char jsontext[16 * 1024];
+		//avro_schema_error_t schema_error;
+		char jsontext[32 * 1024];
 		FILE *fp;
 		int rval;
-
-		fp = fopen("tpx_schema.json", "r");
+		
+		if(m_send_raw_tot){
+			fp = fopen("tpx_schema.json", "r");
+		} else {
+			fp = fopen("tpx_schema_tot_scaled.json", "r");			
+		}
 		rval = fread(jsontext, 1, sizeof(jsontext) - 1, fp);
 		jsontext[rval] = '\0';
 
@@ -124,14 +117,18 @@ void NetworkSender::init_schema(void)
 
 
 		cluster_array_schema = avro_schema_get_subschema(tpx_schema, "clusterArray");
-
+		energy_array_schema = avro_schema_array(avro_schema_int());
+		//energy_array_schema = avro_schema_get_subschema(cluster_array_schema, "ei");
+		if (!energy_array_schema)
+			Log << MSG::ERROR << "could not find ei array in schema" << endreq;
+		
 
 
 		//avro_schema_t cluster_schema = avro_schema_get_subschema(cluster_array_schema, "Cluster"); //doesn't work, why?
 
 
 
-		fprintf(stderr,"%d %d %d \n", tpx_frame, cluster_array_schema, cluster_schema);
+		fprintf(stderr,"%ld %ld %ld %ld\n",tpx_frame, cluster_array_schema, cluster_schema, energy_array_schema);
 
 //        if (avro_schema_from_json_literal(TPX_SCHEMA, &tpx_schema)) {
 //                fprintf(stderr, "Unable to parse TPX-SCHEMA schema\n");
@@ -194,13 +191,21 @@ NetworkSender::NetworkSender() : MediPixAlgo(), CalibrationLoader(this) {
   // This value will be overridden by the configuration because it'll registered
   //  as a ConfigurationValue in the Init member of this class.
   m_minNPixels = 1;
-
+  m_send_raw_tot = kTRUE;
 }
 
-void NetworkSender::SetHostname(const char * hostname){
+void NetworkSender::SetHostname(TString hostname, TString hostname2, TString hostname3 ){
 	m_hostname = hostname;
+	m_hostname2 = hostname2;
+	m_hostname3 = hostname3;
 }
 
+void NetworkSender::SendRawTOTperPixel(bool send_raw_tot ){
+        // if set kTRUE in run macro,full range of TOT is send _per_pixel_
+	// if set kFALSE in run macro, TOT is scaled down to 8 bit to fit in one avro_byte
+	// the total_cluster energy is independent and always send as calibarted energy value in keV!
+	m_send_raw_tot = send_raw_tot;
+}
 
 void NetworkSender::Init(){
 
@@ -221,20 +226,28 @@ void NetworkSender::Init(){
 	init_schema();
 	Log << MSG::INFO <<  "Creating TUDPSocket" << endreq;
 	fSocket = new TUDPSocket(m_hostname, 8123);
-
-	if (!fSocket || !fSocket->IsValid()) {
+	if(!m_hostname2.IsNull()) {
+		Log << MSG::INFO <<  "setting up hostname2" << endreq; 		
+		fSocket2 = new TUDPSocket(m_hostname2, 8123);
+	        fSocket2->SetOption(kKeepAlive, 1);
+        	//fSocket2->SetOption(kNoDelay, 1);
+	        fSocket2->SetOption(kNoBlock, 1);
+       	} if(!m_hostname3.IsNull()) {
+		Log << MSG::INFO <<  "setting up hostname3" << endreq;
+		fSocket3 = new TUDPSocket(m_hostname3, 8123);	
+		fSocket3->SetOption(kNoBlock, 1);
+       		fSocket3->SetOption(kKeepAlive, 1);
+	} if (!fSocket || !fSocket->IsValid()) {
 		Log << MSG::ERROR << "cannot connect to host:" << m_hostname << endreq;
-
 	}
 
 	fSocket->SetOption(kKeepAlive, 1);
-	fSocket->SetOption(kNoDelay, 1);
+	//fSocket->SetOption(kNoDelay, 1);
 	fSocket->SetOption(kNoBlock, 1);
 
-	xi = new unsigned char[256]();
-	yi = new unsigned char[256]();
-	ei = new unsigned char[256]();
-
+	xi = new unsigned char[256*256]();
+	yi = new unsigned char[256*256]();
+	ei = new unsigned char[256*256]();
 }
 
 void NetworkSender::Execute(){
@@ -261,11 +274,16 @@ void NetworkSender::Execute(){
 	avro_schema_record_field_append(cluster_schema, "center_y", avro_schema_float());
 	avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
 	avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
-	avro_schema_record_field_append(cluster_schema, "ei", avro_schema_bytes());
+	if(m_send_raw_tot) {	
+		if(avro_schema_record_field_append(cluster_schema, "ei", energy_array_schema))//avro_schema_array(avro_schema_int()));
+		Log << MSG::ERROR << "could not append ei record field to schema" << avro_strerror() << endreq;	
+	} else {
+		avro_schema_record_field_append(cluster_schema, "ei", avro_schema_bytes());
+	}
 	tpx_frame = avro_record(tpx_schema);
 
 	avro_cluster_array = avro_array(cluster_array_schema);
-
+	//avro_energy_array = avro_array(energy_array_schema);
 
 
 	cluster cl;
@@ -297,6 +315,8 @@ void NetworkSender::Execute(){
 
 		// Store the cluster TOT for output
 		//m_clusterTOT.push_back( cl.bP.clusterTOT );
+
+		avro_energy_array = avro_array(energy_array_schema);
 
 		avro_cluster = avro_record(cluster_schema);
 
@@ -333,19 +353,29 @@ void NetworkSender::Execute(){
 
 			// Use calibration to obtain E = Surrogate(TOT) for this pixel
 			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
-
+			
 			if(pix.first && pix.second){
 				xi[xcount] = pix.first;
 				yi[ycount] = pix.second;
-				//tot should be never zero
-				//we scale it here from 10bit (Timepix1) down to 8bit
-		                // no! 11810 bit is maxium count
-				if (tot > 1500) tot = 1500; //limit at ~1.5 MeV
-				ei[ecount] = round((tot*256.0)/1500);
-				//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-				//ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
-				if (!ei[ecount])
-					ei[ecount] = 1;  //~4kev if calibrated
+				if(m_send_raw_tot) {
+					avro_datum_t i32_datum = avro_int32(tot);
+			                int rval = avro_array_append_datum(avro_energy_array, i32_datum);
+			                //avro_datum_decref(i32_datum);
+		                	if (rval) {
+						Log << MSG::ERROR << "could not append energy datum" << endreq;
+                		        	//exit(EXIT_FAILURE);
+                			}
+				} else {
+					//tot should be never zero
+					//we scale it here from 10bit (Timepix1) down to 8bit
+			                // no! 11810 bit is maxium count
+					if (tot > 1500) tot = 1500; //limit at ~1.5 MeV
+						ei[ecount] = round((tot*256.0)/1500);
+					//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+					//ei[ecount] = floor( (calib_edep - 4 ) * (256.0) / 1000.0);
+					if (!ei[ecount])
+						ei[ecount] = 1;  //~4kev if calibrated
+				}
 			}
 
 
@@ -370,8 +400,12 @@ void NetworkSender::Execute(){
 
 		avro_record_set(avro_cluster, "xi", avro_bytes((char *)xi, xcount));
 		avro_record_set(avro_cluster, "yi", avro_bytes((char *)yi, ycount));
-		avro_record_set(avro_cluster, "ei", avro_bytes((char *)ei, ecount));
-
+		if(m_send_raw_tot){
+			if(avro_record_set(avro_cluster, "ei", avro_energy_array))
+				Log << MSG::ERROR << "could not set ei record field" << avro_strerror() << endreq;
+		} else {
+			avro_record_set(avro_cluster, "ei", avro_bytes((char *)ei, ecount));
+		}
 		// Store the cluster Energy calculated in the previous loop
 		//m_clusterEnergy.push_back( clusterEdep );
 		avro_record_set(avro_cluster, "energy", avro_float((float)clusterEdep));//cl.bP.clusterTOT));
@@ -424,7 +458,7 @@ void NetworkSender::Execute(){
 //    Log << MSG::DEBUG << "byte after deflate:" << codec->used_size << endreq;
 
       if (avro_write_data(a_db, tpx_schema, tpx_frame)) {
-              fprintf(stderr,"Unable to write tpx_frame %i of %i bytes to memory buffer\nMessage: %s\n", id, avro_writer_tell(a_db), avro_strerror());
+              fprintf(stderr,"Unable to write tpx_frame %i of %ld bytes to memory buffer\nMessage: %s\n", id, avro_writer_tell(a_db), avro_strerror());
 
 //              	  avro_array_(avro_cluster_array, avro_cluster);
 
@@ -447,9 +481,14 @@ void NetworkSender::Execute(){
     if (!db_size || fSocket->SendRaw(buffer, db_size, kDontBlock) == -1) {
     	Log << MSG::ERROR << "error sending command to host" << endreq;
     }
+    if(fSocket2)
+    	fSocket2->SendRaw(buffer, db_size, kDontBlock);
+    if(fSocket3)
+	fSocket3->SendRaw(buffer, db_size, kDontBlock);
 
     avro_writer_reset(a_db);
     //avro_codec_reset(codec);
+   avro_datum_decref(avro_energy_array);   
    avro_datum_decref(avro_cluster_array);
    avro_datum_decref(avro_cluster);
 //    avro_datum_decref(tpx_frame);
@@ -466,11 +505,14 @@ void NetworkSender::Finalize() {
 
 	Log << MSG::INFO << "Finalize function !" << endreq;
     avro_datum_decref(avro_cluster);
+    avro_datum_decref(avro_energy_array);
     avro_datum_decref(avro_cluster_array);
     avro_datum_decref(tpx_frame);
-    avro_datum_decref(cluster_schema);
-    avro_datum_decref(cluster_array_schema);
-    avro_datum_decref(tpx_schema);
+    
+    avro_schema_decref(cluster_schema);
+    avro_schema_decref(cluster_array_schema);
+    avro_schema_decref(energy_array_schema);	    
+    avro_schema_decref(tpx_schema);
 }
 
 #endif

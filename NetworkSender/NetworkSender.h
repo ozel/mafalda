@@ -13,8 +13,8 @@
 #include "MPXAlgo/MediPixAlgo.h"
 #include "CalibrationLoader/CalibrationLoader.h"
 
-#include "avro.h"
-
+#include <avro.h>
+#include <TString.h>
 
 // This algorithm is using an object put in the StoreGate
 //  by BlobsFinder. I need to know the object.
@@ -35,13 +35,16 @@ public:
   void Finalize();
   void init_schema();
   void add_cluster(avro_writer_t db);
-  void SetHostname(const char * hostname);
-
+  void SetHostname(TString hostname, TString hostname2 = "", TString hostname3 = "");
+  void SendRawTOTperPixel(bool send_raw_tot);
 private:
 
   AllBlobsContainer * m_aB;
   Int_t m_minNPixels;
-  const char * m_hostname;
+  TString m_hostname; //const char * m_hostname;
+  TString m_hostname2;//const char * m_hostname2;
+  TString m_hostname3;//const char * m_hostname3;
+  Bool_t m_send_raw_tot;
 
   // for output
   vector<int> m_clusterTOT;

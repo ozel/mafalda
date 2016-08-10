@@ -11,7 +11,11 @@
  *  $ root -l runNetworkSender.C
  */
 
-void runNetworkSender(const char * hostname = "ozelipad.local"){
+TString def_hostname = "ozelipad";
+TString host2 = "ozelmacpro"; //optional, can be empty
+TString host3 = "";	      //optional, can be empty
+
+void runNetworkSender(TString hostname = def_hostname){
 
 	// Load the MediPix analysis lib
 	gSystem->Load("libMediPixAnalysisCore.so");
@@ -31,7 +35,8 @@ void runNetworkSender(const char * hostname = "ozelipad.local"){
 	NetworkSender * ac = new NetworkSender;
 	ac->changeOutputLevel(MSG::INFO);
 	mpxAnalysis.ConnectAlgo("NetworkSender", ac);
-	ac->SetHostname(hostname);
+	ac->SetHostname(hostname, host2, host3);
+	ac->SendRawTOTperPixel(kTRUE);
 	// Setting up the calibration from this algorithm by loading
 	//  the 4 calibration files and the clock used for calibration. 
 	//  If you fail loading any of the 5 following pieces then the 

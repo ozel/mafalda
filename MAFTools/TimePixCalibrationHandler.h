@@ -8,9 +8,11 @@
 #ifndef TIMEPIXCALIBRATIONHANDLER_H_
 #define TIMEPIXCALIBRATIONHANDLER_H_
 
-#ifndef __MAFALDA_EMBEDDED
+#define __MAFALDA_EMBEDDED
+
+//#ifndef __MAFALDA_EMBEDDED
 #include <TF1.h>
-#endif
+//#endif
 
 #include <vector>
 #include <set>
@@ -69,10 +71,9 @@ private:
 
 #ifndef __MAFALDA_EMBEDDED
 	std::map<std::pair<int, int>, TF1* > m_surrogateMap;
-#endif
 	std::set<std::pair<int, int> > m_surrogateSet; // verify content
 	std::set<std::pair<int, int> >::iterator m_surrogateItr;
-
+#endif
 };
 
 }
