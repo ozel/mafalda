@@ -21,8 +21,8 @@
 #include <assert.h>
 
 #define BUFF_LEN 1472 //508
-avro_schema_t tpx_schema, cluster_schema, cluster_array_schema, energy_array_schema;
-avro_datum_t tpx_frame, avro_cluster, avro_cluster_array, avro_energy_array;
+avro_schema_t tpx_schema, cluster_schema, cluster_array_schema, energy_array_schema, x_array_schema, y_array_schema;
+avro_datum_t tpx_frame, avro_cluster, avro_cluster_array, avro_energy_array, avro_x_array, avro_y_array;
 avro_writer_t a_db;
 char * buffer;
 TUDPSocket * fSocket;
@@ -118,6 +118,8 @@ void NetworkSender::init_schema(void)
 
 		cluster_array_schema = avro_schema_get_subschema(tpx_schema, "clusterArray");
 		energy_array_schema = avro_schema_array(avro_schema_int());
+		x_array_schema = avro_schema_array(avro_schema_int());
+		y_array_schema = avro_schema_array(avro_schema_int());
 		//energy_array_schema = avro_schema_get_subschema(cluster_array_schema, "ei");
 		if (!energy_array_schema)
 			Log << MSG::ERROR << "could not find ei array in schema" << endreq;
@@ -272,8 +274,10 @@ void NetworkSender::Execute(){
 	avro_schema_record_field_append(cluster_schema, "energy", avro_schema_float());
 	avro_schema_record_field_append(cluster_schema, "center_x", avro_schema_float());
 	avro_schema_record_field_append(cluster_schema, "center_y", avro_schema_float());
-	avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
-	avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
+	//avro_schema_record_field_append(cluster_schema, "xi", avro_schema_bytes());
+	//avro_schema_record_field_append(cluster_schema, "yi", avro_schema_bytes());
+	avro_schema_record_field_append(cluster_schema, "xi", x_array_schema);
+	avro_schema_record_field_append(cluster_schema, "yi", y_array_schema);
 	if(m_send_raw_tot) {	
 		if(avro_schema_record_field_append(cluster_schema, "ei", energy_array_schema))//avro_schema_array(avro_schema_int()));
 		Log << MSG::ERROR << "could not append ei record field to schema" << avro_strerror() << endreq;	
@@ -315,6 +319,9 @@ void NetworkSender::Execute(){
 
 		// Store the cluster TOT for output
 		//m_clusterTOT.push_back( cl.bP.clusterTOT );
+		
+		avro_x_array = avro_array(x_array_schema);
+		avro_y_array = avro_array(y_array_schema);
 
 		avro_energy_array = avro_array(energy_array_schema);
 
@@ -354,9 +361,14 @@ void NetworkSender::Execute(){
 			// Use calibration to obtain E = Surrogate(TOT) for this pixel
 			calib_edep = CalculateAndGetCalibEnergy(pix, tot);
 			
-			if(pix.first && pix.second){
+			if((pix.first >= 0) && (pix.second >= 0)){
 				xi[xcount] = pix.first;
 				yi[ycount] = pix.second;
+				avro_datum_t i32_datum_x = avro_int32((int)pix.first);
+				avro_datum_t i32_datum_y = avro_int32((int)pix.second);
+				avro_array_append_datum(avro_x_array, i32_datum_x);
+				avro_array_append_datum(avro_y_array, i32_datum_y);
+
 				if(m_send_raw_tot) {
 					avro_datum_t i32_datum = avro_int32(tot);
 			                int rval = avro_array_append_datum(avro_energy_array, i32_datum);
@@ -398,8 +410,10 @@ void NetworkSender::Execute(){
 
 
 
-		avro_record_set(avro_cluster, "xi", avro_bytes((char *)xi, xcount));
-		avro_record_set(avro_cluster, "yi", avro_bytes((char *)yi, ycount));
+		//avro_record_set(avro_cluster, "xi", avro_bytes((char *)xi, xcount));
+		//avro_record_set(avro_cluster, "yi", avro_bytes((char *)yi, ycount));
+		avro_record_set(avro_cluster, "xi", avro_x_array);
+		avro_record_set(avro_cluster, "yi", avro_y_array);
 		if(m_send_raw_tot){
 			if(avro_record_set(avro_cluster, "ei", avro_energy_array))
 				Log << MSG::ERROR << "could not set ei record field" << avro_strerror() << endreq;
@@ -488,6 +502,8 @@ void NetworkSender::Execute(){
 
     avro_writer_reset(a_db);
     //avro_codec_reset(codec);
+   avro_datum_decref(avro_x_array);
+   avro_datum_decref(avro_y_array);
    avro_datum_decref(avro_energy_array);   
    avro_datum_decref(avro_cluster_array);
    avro_datum_decref(avro_cluster);
@@ -505,12 +521,17 @@ void NetworkSender::Finalize() {
 
 	Log << MSG::INFO << "Finalize function !" << endreq;
     avro_datum_decref(avro_cluster);
+    avro_datum_decref(avro_x_array);
+    avro_datum_decref(avro_y_array);
     avro_datum_decref(avro_energy_array);
     avro_datum_decref(avro_cluster_array);
     avro_datum_decref(tpx_frame);
-    
+ 
+   
     avro_schema_decref(cluster_schema);
     avro_schema_decref(cluster_array_schema);
+    avro_schema_decref(x_array_schema);
+    avro_schema_decref(y_array_schema);
     avro_schema_decref(energy_array_schema);	    
     avro_schema_decref(tpx_schema);
 }
